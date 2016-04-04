@@ -1,8 +1,6 @@
 #!/bin/bash
 
-#
-# std.shlib version 1
-#
+std_shlib_version=1
 
 #
 # Global variables
