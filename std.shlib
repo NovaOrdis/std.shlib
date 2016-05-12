@@ -40,6 +40,7 @@ function fail
 #
 function debug-arguments
 {
+    local first=$1 # placeholder, to avoid IDE warnings
     local args
     if ${verbose}; then
         for arg do
