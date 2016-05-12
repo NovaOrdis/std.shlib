@@ -28,28 +28,38 @@ function fail
     echo "[error]: $@" 1>&2 && exit 255
 }
 
+#
+# Activated by --verbose|-v. Relies on a "verbose" global variable.
+#
+# Usage:
+#
+#        debug-arguments "$@"
+#
+# It is important to double-quote the argument, otherwise the empty arguments won't be displayed.
+#
+#
 function debug-arguments
 {
-    #${verbose} && echo "${FUNCNAME[1]}($@)" 1>&2;
-    # we need a more elaborate debug function because we need to mask some arguments
-    local line
+    local args
     if ${verbose}; then
-        while [ -n "$1" ]; do
-            local arg=$1
+        for arg do
+            #
+            # this is how we mask passwords
+            #
             if [ "--aws-secret-key" = "${arg}" ]; then
-                shift
                 arg="--aws-secret-key ***"
             fi
-            if [ -z "${line}" ]; then
-                line=${arg}
-            else
-                line="${line} ${arg}"
-            fi
-            shift
-        done
-        echo "${FUNCNAME[1]}(${line})" 1>&2;
-    fi
 
+            [ -z "${arg}" ] && arg="\"\""
+
+            if [ -z "${args}" ]; then
+                args="${arg}"
+            else
+                args="${args}, ${arg}"
+            fi
+        done
+        echo "${FUNCNAME[1]}(${args})" 1>&2;
+    fi
     return 0
 }
 
