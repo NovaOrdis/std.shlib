@@ -36,7 +36,7 @@ function fail
 #        debug-arguments "$@"
 #
 # It is important to double-quote the argument, otherwise the empty arguments won't be displayed.
-#
+# TODO: Tested on Mac, must also test on Linux, cygwin
 #
 function debug-arguments
 {
