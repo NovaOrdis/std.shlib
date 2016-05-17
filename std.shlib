@@ -101,6 +101,16 @@ function error
 }
 
 #
+# Asks the question and it expects a y/n answer. If the answer starts with 'y', returns 0, otherwise it returns 1
+#
+function yes
+{
+    echo -n "$@ [y/n] " 1>&2;
+    read line
+    [ "${line:0:1}" = "y" ] && return 0 || return 1
+}
+
+#
 # displays the arguments at stderr as [dry-run]. Does NOT exit.
 #
 function dry-run
