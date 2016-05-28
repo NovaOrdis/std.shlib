@@ -1,6 +1,6 @@
 #!/bin/bash
 
-std_shlib_version=1
+std_shlib_version=2
 
 #
 # Global variables
@@ -174,3 +174,158 @@ function process-common-arguments
         shift
     done
 }
+
+########################################################################################################################
+# File Operations
+########################################################################################################################
+
+#
+# move <source-file> <destination-file>
+#
+# Overwrite the destination-file with the source-file *only if the files differ*. The default behavior is to
+# remove the source file upon success.
+#
+# If the files are identical, fail.
+#
+# Note that this behavior is built-in into replace-regex and replace-regex-line, so use those with priority.
+#
+function move()
+{
+    local src=$1
+    local dest=$2
+
+    [ "${src}" = "" ] && fail "no source file specified"
+    [ -f ${src} ] || fail "no such file ${src}"
+    [ "${dest}" = "" ] && fail "no destination file specified"
+    [ -f ${dest} ] || fail "no such file ${dest}"
+
+    diff ${src} ${dest} > /dev/null && fail "files ${src} and ${dest} are identical, no replacement was made"
+    mv ${src} ${dest} || fail "failed to move ${src} over ${dest}"
+}
+
+########################################################################################################################
+# END of File Operations
+########################################################################################################################
+
+########################################################################################################################
+# regex Operations
+########################################################################################################################
+
+#
+# Removes the whole line if it contains the regular expression
+#
+# Return 0 if something was actually removed or 1 if the file was not changed
+#
+# TODO add tests if I need to change it
+#
+function remove-regex-line()
+{
+    local regex=$1
+    local file=$2
+    local tmp=$(unique-file)
+    sed -e '/'"${regex}"'/d' ${file} > ${tmp} || fail "fail to execute sed -e '/'${regex}'/d' on ${file}"
+    diff ${file} ${tmp} > /dev/null && { rm ${tmp}; debug "${regex} not in ${file}"; return 1; } # identical files, no replacement made
+    mv ${tmp} ${file} && { debug "line matching '${regex}' was removed from ${file}"; return 0; } || fail "failed to restore ${file}"
+}
+
+#
+# Replaces source_regex with target_regex. The source_regex and target_regex will be used in the same sed expression,
+# so \1 will work. It has the "move" functionality (see function move()) built-in.
+#
+# Example:
+#
+# replace-regex "^\(Defaults[ \t]*requiretty[ \t]*\)$" "#\1" /etc/sudoers
+#
+# Various character representation:
+#
+# "  \\\"
+# /  \/
+#
+# The function returns 0 if the file was modified and 1 if no modification occured
+#
+function replace-regex()
+{
+    local source_regex=$1
+    local target_regex=$2
+    local file=$3
+
+    local tmp=$(unique-file)
+    sed -e 's/'"${source_regex}"'/'"${target_regex}"'/g' ${file} > ${tmp} || fail "fail to execute sed -e 's/'${source_regex}'/'"${target_regex}"'/g' on ${file}"
+    diff ${file} ${tmp} > /dev/null && { rm ${tmp}; debug "${source_regex} not found in ${file}, no replacement was made"; return 1; } # identical files, no replacement made
+    mv ${tmp} ${file} && { debug "'${source_regex}' replaced in ${file}"; return 0; } || fail "failed to restore ${file}"
+}
+
+#
+# Insert the line at the specified line number.
+# arg 1: line number
+# arg 2: line.
+# arg 3: file
+function insert-at-line()
+{
+    local line_number=$1
+    local line=$2
+    local file=$3
+
+    local tmp=$(unique-file)
+    cat ${file} | sed -e ${line_number}'a\
+'"${line}" > ${tmp} || fail "fail to append to line ${line_number} in ${file}"
+    diff ${file} ${tmp} > /dev/null && { rm ${tmp}; debug "no insertion was made"; return 1; } # identical files, no replacement made
+    mv ${tmp} ${file} && { debug "line inserted at ${line_number} in ${file}"; return 0; } || fail "failed to restore ${file}"
+}
+
+#
+# Returns the number of the first line of the file containing the specified regular expressions.
+# arg 1: regular expression
+# arg 2: file
+#
+# return empty string if no such regex is found
+#
+function first-line-containing() {
+
+    local regex=$1
+    local file=$2
+
+    local line_number=$(grep -n -m 1 "${regex}" ${file})
+    line_number=${line_number%:*}
+    echo ${line_number}
+}
+
+#
+# Returns the number of the last line of the file containing the specified regular expressions.
+# arg 1: regular expression
+# arg 2: file
+#
+# return empty string if no such regex is found
+#
+function last-line-containing() {
+
+    debug-arguments $@
+
+    local regex=$1
+    local file=$2
+
+    local line_number=$(grep -n "${regex}" ${file} | tail -1)
+    line_number=${line_number%:*}
+
+    debug "last-line-containing: ${line_number}"
+    echo ${line_number}
+}
+
+#
+# returns the line with the specified line number at stdout (or empty string if no such line exists)
+#
+function line-at() {
+
+    debug-arguments $@
+
+    local line_number=$1
+    local file=$2
+
+    [ -f ${file} ] || fail "file ${file} not found"
+
+    sed -n ${line_number}'p' ${file}
+}
+
+########################################################################################################################
+# END of regex Operations
+########################################################################################################################
