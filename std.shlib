@@ -103,6 +103,10 @@ function error
 #
 # Asks the question and it expects a y/n answer. If the answer starts with 'y', returns 0, otherwise it returns 1
 #
+# Usage example:
+#
+#   yes "do this?" || { info "we did not want to do this, nothing changed"; return 0; }
+#
 function yes
 {
     echo -n "$@ [y/n] " 1>&2;
